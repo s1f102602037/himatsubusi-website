@@ -7,12 +7,17 @@ import {
   useRef,
   useState,
 } from "react";
+import { ArrowDrift, KeyChorus, OrbitGuard, TypingComet } from "./KeyboardArcade";
 
 type Category = "game" | "diagnosis" | "refresh" | "create";
 type ContentId =
   | "reaction"
   | "color-clash"
   | "star-memory"
+  | "typing-comet"
+  | "arrow-drift"
+  | "orbit-guard"
+  | "key-chorus"
   | "hima-type"
   | "brain-weather"
   | "idea-gacha"
@@ -22,6 +27,7 @@ type ContentId =
   | "time-capsule";
 type View = "home" | ContentId;
 type TimeFilter = "all" | "1" | "3" | "10";
+type ControlMode = "keyboard" | "pointer" | "mixed";
 
 type ContentItem = {
   id: ContentId;
@@ -33,6 +39,8 @@ type ContentItem = {
   icon: string;
   tone: "violet" | "coral" | "mint" | "yellow" | "blue";
   tag: string;
+  control: ControlMode;
+  howTo: string;
 };
 
 type Stats = {
@@ -42,6 +50,11 @@ type Stats = {
   lastVisit: string;
   best: Record<string, number>;
   history: ContentId[];
+  completed: Record<string, number>;
+  streak: number;
+  lastPlayDate: string;
+  dailyDate: string;
+  dailyPlays: ContentId[];
 };
 
 const DEFAULT_STATS: Stats = {
@@ -51,6 +64,11 @@ const DEFAULT_STATS: Stats = {
   lastVisit: "",
   best: {},
   history: [],
+  completed: {},
+  streak: 0,
+  lastPlayDate: "",
+  dailyDate: "",
+  dailyPlays: [],
 };
 
 const CONTENT: ContentItem[] = [
@@ -64,6 +82,8 @@ const CONTENT: ContentItem[] = [
     icon: "⚡",
     tone: "yellow",
     tag: "反射神経",
+    control: "mixed",
+    howTo: "スタート後、画面がミント色に光った瞬間にクリック・タップ、または Space キーを押します。早押しはフライングです。",
   },
   {
     id: "color-clash",
@@ -75,6 +95,8 @@ const CONTENT: ContentItem[] = [
     icon: "◉",
     tone: "coral",
     tag: "30秒勝負",
+    control: "pointer",
+    howTo: "大きく表示された文字の意味ではなく、文字に使われている色と同じ色のボタンを選びます。30秒の得点勝負です。",
   },
   {
     id: "star-memory",
@@ -86,6 +108,60 @@ const CONTENT: ContentItem[] = [
     icon: "✦",
     tone: "blue",
     tag: "記憶力",
+    control: "pointer",
+    howTo: "最初に光る星の位置を覚え、光が消えたら同じマスをすべて選びます。レベルごとに星が増えます。",
+  },
+  {
+    id: "typing-comet",
+    category: "game",
+    title: "タイピング彗星",
+    shortTitle: "タイピング彗星",
+    description: "ローマ字を打つほど彗星が加速。30秒のことば宇宙旅行。",
+    time: 1,
+    icon: "☄",
+    tone: "coral",
+    tag: "キーボード新作",
+    control: "keyboard",
+    howTo: "表示されたローマ字を左からそのまま入力します。1語を打ち切ると次の言葉へ進み、連続成功でコンボ得点が増えます。",
+  },
+  {
+    id: "arrow-drift",
+    category: "game",
+    title: "アロー・ドリフト",
+    shortTitle: "アロードリフト",
+    description: "流れてくる矢印を方向キーで追う、指先のショートレース。",
+    time: 1,
+    icon: "↝",
+    tone: "yellow",
+    tag: "方向キー / WASD",
+    control: "keyboard",
+    howTo: "中央で大きく光る矢印と同じ方向キーを順番に押します。W A S D キーでも同じように操作できます。",
+  },
+  {
+    id: "orbit-guard",
+    category: "game",
+    title: "オービット・ガード",
+    shortTitle: "オービットガード",
+    description: "宇宙船をキーで動かし、落ちる流星を読むターン制サバイバル。",
+    time: 3,
+    icon: "▲",
+    tone: "mint",
+    tag: "キー操作",
+    control: "mixed",
+    howTo: "方向キーまたは W A S D で宇宙船を1マス移動。押すたびに流星も1マス落ちます。星を集めつつ36ターン生き残ります。",
+  },
+  {
+    id: "key-chorus",
+    category: "game",
+    title: "キー・コーラス",
+    shortTitle: "キーコーラス",
+    description: "A S D F の4音だけ。光った順番を覚えて星空を奏でよう。",
+    time: 3,
+    icon: "♫",
+    tone: "blue",
+    tag: "音と記憶",
+    control: "mixed",
+    howTo: "4つの音が光る順番を覚え、あなたの番になったら A S D F で再現します。ラウンドごとに音が1つ増えます。",
   },
   {
     id: "hima-type",
@@ -97,6 +173,8 @@ const CONTENT: ContentItem[] = [
     icon: "✺",
     tone: "violet",
     tag: "4タイプ",
+    control: "pointer",
+    howTo: "6つの質問に直感で回答します。正解・不正解はありません。最後に今のあなたに近い暇つぶしタイプを表示します。",
   },
   {
     id: "brain-weather",
@@ -108,6 +186,8 @@ const CONTENT: ContentItem[] = [
     icon: "☁",
     tone: "blue",
     tag: "気分観測",
+    control: "pointer",
+    howTo: "今の感覚にいちばん近い選択肢を5問選びます。回答から脳内の空模様と短い過ごし方を提案します。",
   },
   {
     id: "idea-gacha",
@@ -119,6 +199,8 @@ const CONTENT: ContentItem[] = [
     icon: "⌘",
     tone: "coral",
     tag: "全24種",
+    control: "pointer",
+    howTo: "ガチャを回すと、日常を少しだけ変える小さなお題が1つ出ます。気に入ったお題はこの端末に保存できます。",
   },
   {
     id: "bubble",
@@ -130,6 +212,8 @@ const CONTENT: ContentItem[] = [
     icon: "●",
     tone: "mint",
     tag: "無心モード",
+    control: "pointer",
+    howTo: "画面の惑星を好きな順番でぷちっと割ります。全部割ると流星群が現れます。音量は端末側で調整できます。",
   },
   {
     id: "breathing",
@@ -141,6 +225,8 @@ const CONTENT: ContentItem[] = [
     icon: "◎",
     tone: "mint",
     tag: "60秒休憩",
+    control: "pointer",
+    howTo: "開始したら、中央の光が大きくなる間に吸い、小さくなる間に吐きます。60秒で自動的に完了します。",
   },
   {
     id: "binary",
@@ -152,6 +238,8 @@ const CONTENT: ContentItem[] = [
     icon: "⇄",
     tone: "yellow",
     tag: "ゆる投票",
+    control: "pointer",
+    howTo: "どちらでもいい二択を、気分で片方ずつ選びます。選ぶと架空の投票結果が表示され、次の問いへ進みます。",
   },
   {
     id: "time-capsule",
@@ -163,6 +251,8 @@ const CONTENT: ContentItem[] = [
     icon: "◷",
     tone: "violet",
     tag: "端末に保存",
+    control: "keyboard",
+    howTo: "今日の出来事や気分を80文字以内で入力して保存します。内容は送信されず、このブラウザの端末内だけに残ります。",
   },
 ];
 
@@ -175,7 +265,7 @@ const CATEGORY_LABELS: Record<Category, string> = {
 
 const VALID_IDS = new Set(CONTENT.map((item) => item.id));
 
-function useStoredState<T>(key: string, initialValue: T) {
+function useStoredState<T>(key: string, initialValue: T, normalize?: (value: unknown) => T) {
   const [value, setValue] = useState(initialValue);
   const [ready, setReady] = useState(false);
 
@@ -183,7 +273,10 @@ function useStoredState<T>(key: string, initialValue: T) {
     const timer = window.setTimeout(() => {
       try {
         const stored = window.localStorage.getItem(key);
-        if (stored) setValue(JSON.parse(stored) as T);
+        if (stored) {
+          const parsed: unknown = JSON.parse(stored);
+          setValue(normalize ? normalize(parsed) : parsed as T);
+        }
       } catch {
         // The experience remains fully usable if storage is unavailable.
       } finally {
@@ -191,7 +284,7 @@ function useStoredState<T>(key: string, initialValue: T) {
       }
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [key]);
+  }, [key, normalize]);
 
   useEffect(() => {
     if (!ready) return;
@@ -206,9 +299,29 @@ function useStoredState<T>(key: string, initialValue: T) {
 }
 
 function todayKey() {
-  return new Intl.DateTimeFormat("ja-JP", {
+  return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Tokyo",
   }).format(new Date());
+}
+
+function normalizeStats(value: unknown): Stats {
+  if (!value || typeof value !== "object") return DEFAULT_STATS;
+  const stored = value as Partial<Stats>;
+  return {
+    ...DEFAULT_STATS,
+    ...stored,
+    best: stored.best ?? {},
+    history: Array.isArray(stored.history) ? stored.history.filter((id): id is ContentId => VALID_IDS.has(id)) : [],
+    completed: stored.completed ?? {},
+    dailyPlays: Array.isArray(stored.dailyPlays) ? stored.dailyPlays.filter((id): id is ContentId => VALID_IDS.has(id)) : [],
+  };
+}
+
+function isPreviousDay(previous: string, current: string) {
+  if (!previous || !current) return false;
+  const previousDate = new Date(`${previous}T00:00:00+09:00`);
+  const currentDate = new Date(`${current}T00:00:00+09:00`);
+  return currentDate.getTime() - previousDate.getTime() === 86_400_000;
 }
 
 function randomIndex(length: number) {
@@ -219,13 +332,15 @@ export function HimatsubushiApp() {
   const [view, setView] = useState<View>("home");
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("all");
   const [category, setCategory] = useState<"all" | Category>("all");
+  const [controlFilter, setControlFilter] = useState<"all" | ControlMode>("all");
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [theme, setTheme] = useStoredState<"night" | "dawn">(
     "himanowa-theme",
     "night",
   );
-  const [stats, setStats] = useStoredState<Stats>("himanowa-stats", DEFAULT_STATS);
+  const [stats, setStats] = useStoredState<Stats>("himanowa-stats", DEFAULT_STATS, normalizeStats);
   const [toast, setToast] = useState("");
   const greeting = "今日もおつかれさま";
   const searchRef = useRef<HTMLInputElement>(null);
@@ -269,25 +384,42 @@ export function HimatsubushiApp() {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        if (searchOpen) setSearchOpen(false);
+        if (helpOpen) setHelpOpen(false);
+        else if (searchOpen) setSearchOpen(false);
         else if (view !== "home") navigate("home");
       }
       if (event.key === "/" && view === "home" && !isTypingTarget(event.target)) {
         event.preventDefault();
         searchRef.current?.focus();
       }
+      if (event.key === "?" && !isTypingTarget(event.target)) {
+        event.preventDefault();
+        setHelpOpen(true);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  });
+  }, [helpOpen, navigate, searchOpen, view]);
 
   const complete = useCallback(
     (id: ContentId, sparks = 10) => {
       setStats((current) => ({
-        ...current,
-        sparks: current.sparks + sparks,
-        plays: current.plays + 1,
-        history: [id, ...current.history.filter((item) => item !== id)].slice(0, 5),
+        ...(() => {
+          const today = todayKey();
+          const sameDay = current.lastPlayDate === today;
+          const dailyPlays = current.dailyDate === today ? current.dailyPlays : [];
+          return {
+            ...current,
+            sparks: current.sparks + sparks,
+            plays: current.plays + 1,
+            history: [id, ...current.history.filter((item) => item !== id)].slice(0, 5),
+            completed: { ...current.completed, [id]: (current.completed[id] ?? 0) + 1 },
+            streak: sameDay ? current.streak : isPreviousDay(current.lastPlayDate, today) ? current.streak + 1 : 1,
+            lastPlayDate: today,
+            dailyDate: today,
+            dailyPlays: dailyPlays.includes(id) ? dailyPlays : [...dailyPlays, id],
+          };
+        })(),
       }));
       setToast(`+${sparks} sparks ・ いい暇でした ✦`);
     },
@@ -321,10 +453,11 @@ export function HimatsubushiApp() {
     return CONTENT.filter((item) => {
       const matchesTime = timeFilter === "all" || item.time <= Number(timeFilter);
       const matchesCategory = category === "all" || item.category === category;
+      const matchesControl = controlFilter === "all" || item.control === controlFilter || item.control === "mixed";
       const haystack = `${item.title} ${item.description} ${item.tag}`.toLowerCase();
-      return matchesTime && matchesCategory && (!normalized || haystack.includes(normalized));
+      return matchesTime && matchesCategory && matchesControl && (!normalized || haystack.includes(normalized));
     });
-  }, [category, query, timeFilter]);
+  }, [category, controlFilter, query, timeFilter]);
 
   const currentItem = view === "home" ? null : CONTENT.find((item) => item.id === view);
 
@@ -361,6 +494,9 @@ export function HimatsubushiApp() {
           <button className="icon-button" onClick={() => setSearchOpen(true)} aria-label="コンテンツを検索">
             <span aria-hidden="true">⌕</span>
           </button>
+          <button className="icon-button help-button" onClick={() => setHelpOpen(true)} aria-label="ヒマノワの遊び方とキー操作を開く">
+            <span aria-hidden="true">?</span>
+          </button>
           <button
             className="icon-button theme-toggle"
             onClick={() => setTheme(theme === "night" ? "dawn" : "night")}
@@ -379,13 +515,16 @@ export function HimatsubushiApp() {
             items={filtered}
             timeFilter={timeFilter}
             category={category}
+            controlFilter={controlFilter}
             query={query}
             searchRef={searchRef}
             onQuery={setQuery}
             onTime={setTimeFilter}
             onCategory={setCategory}
+            onControl={setControlFilter}
             onNavigate={navigate}
             onRandom={randomLaunch}
+            onHelp={() => setHelpOpen(true)}
           />
         ) : currentItem ? (
           <Experience
@@ -414,6 +553,7 @@ export function HimatsubushiApp() {
           }}
         />
       )}
+      {helpOpen && <HelpCenter stats={stats} onClose={() => setHelpOpen(false)} onNavigate={(id) => { setHelpOpen(false); navigate(id); }} />}
       <div className={`toast ${toast ? "is-visible" : ""}`} role="status" aria-live="polite">
         {toast}
       </div>
@@ -431,13 +571,16 @@ type HomeProps = {
   items: ContentItem[];
   timeFilter: TimeFilter;
   category: "all" | Category;
+  controlFilter: "all" | ControlMode;
   query: string;
   searchRef: React.RefObject<HTMLInputElement | null>;
   onQuery: (value: string) => void;
   onTime: (value: TimeFilter) => void;
   onCategory: (value: "all" | Category) => void;
+  onControl: (value: "all" | ControlMode) => void;
   onNavigate: (view: View) => void;
   onRandom: (minutes?: 1 | 3 | 10) => void;
+  onHelp: () => void;
 };
 
 function Home({
@@ -446,13 +589,16 @@ function Home({
   items,
   timeFilter,
   category,
+  controlFilter,
   query,
   searchRef,
   onQuery,
   onTime,
   onCategory,
+  onControl,
   onNavigate,
   onRandom,
+  onHelp,
 }: HomeProps) {
   const recent = stats.history
     .map((id) => CONTENT.find((item) => item.id === id))
@@ -465,7 +611,7 @@ function Home({
           <p className="eyebrow"><span aria-hidden="true">●</span> 退屈、持ち込み歓迎</p>
           <h1 id="hero-title">暇を、<br /><em>遊びに変える。</em></h1>
           <p className="hero-lead">
-            1分のすき間も、予定のない午後も。ゲーム、診断、ひらめきで、何でもない時間に小さな「！」を。
+            1分のすき間も、予定のない午後も。クリックでも、キーでも。何でもない時間に小さな「！」を。
           </p>
           <div className="hero-actions">
             <button className="primary-button" onClick={() => onRandom(3)}>
@@ -476,7 +622,7 @@ function Home({
             </button>
           </div>
           <div className="tiny-proof" aria-label="サイトのコンテンツ数">
-            <span><b>10</b> の遊び</span><i />
+            <span><b>{CONTENT.length}</b> の遊び</span><i />
             <span><b>0</b> 円</span><i />
             <span><b>∞</b> の暇</span>
           </div>
@@ -485,8 +631,8 @@ function Home({
         <div className="hero-orbit" aria-label="おすすめコンテンツ">
           <div className="orbit-line orbit-line-one" aria-hidden="true" />
           <div className="orbit-line orbit-line-two" aria-hidden="true" />
-          <button className="orbit-card orbit-card-a" onClick={() => onNavigate("reaction")}>
-            <span aria-hidden="true">⚡</span><b>反射神経</b><small>1 MIN</small>
+          <button className="orbit-card orbit-card-a" onClick={() => onNavigate("typing-comet")}>
+            <span aria-hidden="true">☄</span><b>タイピング</b><small>NEW</small>
           </button>
           <button className="orbit-card orbit-card-b" onClick={() => onNavigate("hima-type")}>
             <span aria-hidden="true">✺</span><b>タイプ診断</b><small>6 Q</small>
@@ -504,6 +650,8 @@ function Home({
           <span className="spark spark-c" aria-hidden="true">·</span>
         </div>
       </section>
+
+      <KeyboardLab onNavigate={onNavigate} />
 
       <section className="quick-strip" aria-label="時間で選ぶ">
         <div className="page-width quick-inner">
@@ -552,6 +700,14 @@ function Home({
             </button>
           ))}
         </div>
+        <div className="control-tabs" role="group" aria-label="操作方法で絞り込む">
+          <span>操作で選ぶ</span>
+          {(["all", "keyboard", "pointer"] as const).map((mode) => (
+            <button key={mode} className={controlFilter === mode ? "is-active" : ""} onClick={() => onControl(mode)} aria-pressed={controlFilter === mode}>
+              {mode === "all" ? "すべて" : mode === "keyboard" ? "⌨ キーで遊ぶ" : "◎ クリック・タップ"}
+            </button>
+          ))}
+        </div>
 
         {items.length ? (
           <div className="content-grid">
@@ -564,28 +720,20 @@ function Home({
             <span aria-hidden="true">☄</span>
             <h3>その暇、まだ未発見です</h3>
             <p>検索ワードや絞り込みを少しゆるめてみてください。</p>
-            <button className="secondary-button" onClick={() => { onQuery(""); onCategory("all"); onTime("all"); }}>条件をリセット</button>
+            <button className="secondary-button" onClick={() => { onQuery(""); onCategory("all"); onControl("all"); onTime("all"); }}>条件をリセット</button>
           </div>
         )}
       </section>
 
       <section className="dashboard page-width" aria-labelledby="dashboard-title">
-        <div className="daily-card">
-          <div className="daily-copy">
-            <p className="eyebrow">TODAY&apos;S TINY QUEST</p>
-            <h2 id="dashboard-title">今日の小さなクエスト</h2>
-            <p>「利き手と逆の手で、自分の名前を書いてみる」</p>
-            <button className="text-button" onClick={() => onNavigate("idea-gacha")}>別のお題も引く <span aria-hidden="true">→</span></button>
-          </div>
-          <div className="quest-visual" aria-hidden="true"><span>左？</span><i>✎</i><span>右？</span></div>
-        </div>
+        <DailyMission stats={stats} onNavigate={onNavigate} />
         <div className="stats-card">
           <p className="eyebrow">YOUR LITTLE UNIVERSE</p>
           <h2>暇の足あと</h2>
           <div className="stat-grid">
             <div><strong>{stats.plays}</strong><span>遊んだ回数</span></div>
             <div><strong>{stats.sparks}</strong><span>sparks</span></div>
-            <div><strong>{stats.visits}</strong><span>訪れた日</span></div>
+            <div><strong>{stats.streak}</strong><span>連続プレイ日</span></div>
           </div>
           {recent.length > 0 && (
             <div className="recent-list">
@@ -598,6 +746,8 @@ function Home({
         </div>
       </section>
 
+      <AchievementShelf stats={stats} onHelp={onHelp} />
+
       <section className="manifesto">
         <div className="page-width manifesto-inner">
           <span className="giant-quote" aria-hidden="true">“</span>
@@ -606,6 +756,103 @@ function Home({
         </div>
       </section>
     </>
+  );
+}
+
+const KEYBOARD_IDS: ContentId[] = ["typing-comet", "arrow-drift", "orbit-guard", "key-chorus"];
+
+function KeyboardLab({ onNavigate }: { onNavigate: (view: View) => void }) {
+  const games = CONTENT.filter((item) => KEYBOARD_IDS.includes(item.id));
+  return (
+    <section className="keyboard-lab" aria-labelledby="keyboard-lab-title">
+      <div className="page-width keyboard-lab-inner">
+        <div className="lab-copy">
+          <p className="eyebrow"><span aria-hidden="true">●</span> NEW PLAYGROUND</p>
+          <h2 id="keyboard-lab-title">指先から、<br /><em>暇が動きだす。</em></h2>
+          <p>クリックの次は、キーで寄り道。打つ、よける、追いかける、奏でる。4つの新作は1分から始められます。</p>
+          <button className="primary-button lab-launch" onClick={() => onNavigate("typing-comet")}>KEYBOARD LABへ <span aria-hidden="true">→</span></button>
+        </div>
+        <div className="lab-console">
+          <div className="lab-console-top"><span>HIMANOWA KEYBOARD LAB</span><i>LIVE</i></div>
+          <div className="giant-keys" aria-hidden="true"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></div>
+          <div className="lab-game-list">
+            {games.map((game, index) => (
+              <button key={game.id} onClick={() => onNavigate(game.id)}>
+                <span>{String(index + 1).padStart(2, "0")}</span><i aria-hidden="true">{game.icon}</i><b>{game.shortTitle}</b><small>{game.time} MIN</small><em aria-hidden="true">↗</em>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function DailyMission({ stats, onNavigate }: { stats: Stats; onNavigate: (view: View) => void }) {
+  const playedToday = stats.dailyDate === todayKey() ? stats.dailyPlays : [];
+  const keyboardDone = playedToday.some((id) => KEYBOARD_IDS.includes(id));
+  const varietyDone = playedToday.length >= 3;
+  const completed = Number(keyboardDone) + Number(varietyDone);
+  return (
+    <div className="daily-card mission-card">
+      <div className="daily-copy">
+        <p className="eyebrow">TODAY&apos;S TINY MISSIONS</p>
+        <h2 id="dashboard-title">今日の寄り道ミッション</h2>
+        <div className="mission-list">
+          <button className={keyboardDone ? "is-done" : ""} onClick={() => onNavigate("arrow-drift")}>
+            <span aria-hidden="true">{keyboardDone ? "✓" : "⌨"}</span><div><b>キーを使う遊びを1回</b><small>{keyboardDone ? "クリア！" : "新しい指先の寄り道へ"}</small></div><i>{keyboardDone ? "1/1" : "0/1"}</i>
+          </button>
+          <button className={varietyDone ? "is-done" : ""} onClick={() => onNavigate("brain-weather")}>
+            <span aria-hidden="true">{varietyDone ? "✓" : "✦"}</span><div><b>違う遊びを3種類</b><small>{playedToday.length}/3 種類を体験</small></div><i>{Math.min(playedToday.length, 3)}/3</i>
+          </button>
+        </div>
+      </div>
+      <div className="mission-orbit" aria-label={`今日のミッション ${completed}/2 完了`}><span>{completed}<small>/2</small></span><i /><b>DAILY</b></div>
+    </div>
+  );
+}
+
+const ACHIEVEMENTS = [
+  { id: "first", icon: "✦", title: "はじめの一歩", text: "遊びを1回完了", unlocked: (stats: Stats) => stats.plays >= 1 },
+  { id: "keys", icon: "⌨", title: "キーの旅人", text: "キー遊びを3種類体験", unlocked: (stats: Stats) => KEYBOARD_IDS.filter((id) => (stats.completed[id] ?? 0) > 0).length >= 3 },
+  { id: "spark", icon: "☄", title: "ひま銀河", text: "300 sparksを集める", unlocked: (stats: Stats) => stats.sparks >= 300 },
+  { id: "streak", icon: "◷", title: "三日月ループ", text: "3日連続で遊ぶ", unlocked: (stats: Stats) => stats.streak >= 3 },
+  { id: "collector", icon: "◎", title: "寄り道コレクター", text: "7種類の遊びを体験", unlocked: (stats: Stats) => Object.keys(stats.completed).length >= 7 },
+];
+
+function AchievementShelf({ stats, onHelp }: { stats: Stats; onHelp: () => void }) {
+  const unlocked = ACHIEVEMENTS.filter((achievement) => achievement.unlocked(stats)).length;
+  return (
+    <section className="achievement-section page-width" aria-labelledby="achievement-title">
+      <div className="achievement-heading"><div><p className="eyebrow">TINY CONSTELLATIONS</p><h2 id="achievement-title">暇の称号</h2></div><p>{unlocked}/{ACHIEVEMENTS.length} 解放</p></div>
+      <div className="achievement-grid">
+        {ACHIEVEMENTS.map((achievement) => {
+          const isUnlocked = achievement.unlocked(stats);
+          return <div key={achievement.id} className={isUnlocked ? "is-unlocked" : "is-locked"}><span aria-hidden="true">{isUnlocked ? achievement.icon : "?"}</span><div><b>{achievement.title}</b><small>{achievement.text}</small></div>{isUnlocked && <i>UNLOCKED</i>}</div>;
+        })}
+      </div>
+      <p className="spark-explainer"><span aria-hidden="true">✦</span><b>sparksって？</b> 遊びを完了したときに増える、この端末だけの小さな足あとです。競争も課金もありません。 <button onClick={onHelp}>仕組みを見る</button></p>
+    </section>
+  );
+}
+
+function HelpCenter({ stats, onClose, onNavigate }: { stats: Stats; onClose: () => void; onNavigate: (id: ContentId) => void }) {
+  const closeRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => { closeRef.current?.focus(); }, []);
+  return (
+    <div className="help-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      <section className="help-center" role="dialog" aria-modal="true" aria-labelledby="help-title">
+        <div className="help-top"><div><p className="eyebrow">WELCOME TO HIMANOWA</p><h2 id="help-title">ヒマノワの歩き方</h2></div><button ref={closeRef} onClick={onClose} aria-label="ヘルプを閉じる">×</button></div>
+        <p className="help-lead">ヒマノワは、1〜10分で遊べる小さな寄り道の集まりです。登録は不要。記録はこのブラウザだけに保存されます。</p>
+        <div className="help-grid">
+          <article><span aria-hidden="true">⌨</span><h3>キーでも遊べます</h3><p>「⌨ キー」表示のゲームはキーボードが主役。「⌨ / ◎」はタッチ用ボタンもあります。</p><button onClick={() => onNavigate("typing-comet")}>新作を試す →</button></article>
+          <article><span aria-hidden="true">✦</span><h3>sparks は遊んだ足あと</h3><p>上手さに関係なく、遊びを終えると増えます。{stats.sparks} sparks は外部に送信されず、課金にも使いません。</p></article>
+          <article><span aria-hidden="true">◷</span><h3>時間から選べます</h3><p>「1分」「3分」「10分」は目安です。途中でやめても大丈夫。Esc キーですぐホームへ戻れます。</p></article>
+          <article><span aria-hidden="true">?</span><h3>迷ったら遊び方を見る</h3><p>各コンテンツの上に、目的と操作を1行で表示しています。いつでも ? キーでこの画面を開けます。</p></article>
+        </div>
+        <div className="shortcut-row"><span>サイトのショートカット</span><div><kbd>/</kbd> 検索</div><div><kbd>?</kbd> ヘルプ</div><div><kbd>Esc</kbd> 戻る / 閉じる</div><div><kbd>Space</kbd> 一部ゲーム開始</div></div>
+      </section>
+    </div>
   );
 }
 
@@ -619,7 +866,7 @@ function ContentCard({ item, index, onOpen }: { item: ContentItem; index: number
       </div>
       <div className="card-icon" aria-hidden="true">{item.icon}</div>
       <div className="card-body">
-        <span className="card-tag">{item.tag}</span>
+        <div className="card-tags"><span className="card-tag">{item.tag}</span><span className="control-badge">{item.control === "keyboard" ? "⌨ キー" : item.control === "mixed" ? "⌨ / ◎" : "◎ タップ"}</span></div>
         <h3>{item.title}</h3>
         <p>{item.description}</p>
       </div>
@@ -656,6 +903,11 @@ function Experience({
           <p>{item.description}</p>
         </div>
       </header>
+      <div className="play-guide" aria-label="遊び方">
+        <span aria-hidden="true">?</span>
+        <div><b>遊び方</b><p>{item.howTo}</p></div>
+        <em>{item.control === "keyboard" ? "⌨ KEYBOARD" : item.control === "mixed" ? "⌨ KEY + TOUCH" : "◎ CLICK / TOUCH"}</em>
+      </div>
       <div className="experience-stage">
         <ExperienceBody item={item} stats={stats} onComplete={onComplete} onBest={onBest} />
       </div>
@@ -686,6 +938,10 @@ function ExperienceBody({ item, stats, onComplete, onBest }: {
     case "reaction": return <ReactionGame best={stats.best.reaction} onComplete={onComplete} onBest={onBest} />;
     case "color-clash": return <ColorClash best={stats.best["color-clash"]} onComplete={onComplete} onBest={onBest} />;
     case "star-memory": return <StarMemory best={stats.best["star-memory"]} onComplete={onComplete} onBest={onBest} />;
+    case "typing-comet": return <TypingComet best={stats.best["typing-comet"]} onFinish={(score) => { onBest("typing-comet", score); onComplete("typing-comet", 14 + Math.min(12, Math.floor(score / 150))); }} />;
+    case "arrow-drift": return <ArrowDrift best={stats.best["arrow-drift"]} onFinish={(score) => { onBest("arrow-drift", score); onComplete("arrow-drift", 14 + Math.min(12, Math.floor(score / 120))); }} />;
+    case "orbit-guard": return <OrbitGuard best={stats.best["orbit-guard"]} onFinish={(score) => { onBest("orbit-guard", score); onComplete("orbit-guard", 14 + Math.min(12, Math.floor(score / 80))); }} />;
+    case "key-chorus": return <KeyChorus best={stats.best["key-chorus"]} onFinish={(score) => { onBest("key-chorus", score); onComplete("key-chorus", 14 + Math.min(12, score * 2)); }} />;
     case "hima-type": return <Diagnosis kind="hima" onComplete={onComplete} />;
     case "brain-weather": return <Diagnosis kind="weather" onComplete={onComplete} />;
     case "idea-gacha": return <IdeaGacha onComplete={onComplete} />;
@@ -734,6 +990,16 @@ function ReactionGame({ best, onComplete, onBest }: {
     }
   };
 
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.code !== "Space" || isTypingTarget(event.target) || event.target instanceof HTMLButtonElement) return;
+      event.preventDefault();
+      tap();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
   const label = phase === "idle" ? "タップしてスタート" : phase === "waiting" ? "まだ、まだ…" : phase === "ready" ? "いま！" : phase === "early" ? "おっと、フライング" : `${result} ms`;
   const detail = phase === "idle" ? "画面が光った瞬間にタップしてください" : phase === "waiting" ? "光るまで待って…" : phase === "ready" ? "TAP!" : phase === "early" ? "焦らず、光ってからもう一度" : result && result < 220 ? "稲妻級。目にも止まりません。" : result && result < 300 ? "かなり俊敏！もう一度で記録更新？" : "肩の力を抜くと速くなるかも。";
 
@@ -744,7 +1010,7 @@ function ReactionGame({ best, onComplete, onBest }: {
         <span className="reaction-rings" aria-hidden="true"><i /><i /><i /></span>
         <strong>{label}</strong><small>{detail}</small>
       </button>
-      <p className="stage-hint">マウスでもタッチでも遊べます。フライングも記録には残りません。</p>
+      <p className="stage-hint">マウス・タッチ・<kbd>Space</kbd> で遊べます。フライングも記録には残りません。</p>
     </div>
   );
 }
@@ -1121,14 +1387,19 @@ function TimeCapsule({ onComplete }: { onComplete: (id: ContentId, sparks?: numb
 }
 
 function SearchPalette({ onClose, onNavigate }: { onClose: () => void; onNavigate: (id: ContentId) => void }) {
-  const [query, setQuery] = useState(""); const inputRef = useRef<HTMLInputElement>(null);
+  const [query, setQuery] = useState(""); const [selected, setSelected] = useState(0); const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => { inputRef.current?.focus(); }, []);
   const matches = CONTENT.filter((item) => `${item.title}${item.description}${item.tag}`.toLowerCase().includes(query.toLowerCase()));
+  const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "ArrowDown") { event.preventDefault(); setSelected((value) => Math.min(matches.length - 1, value + 1)); }
+    if (event.key === "ArrowUp") { event.preventDefault(); setSelected((value) => Math.max(0, value - 1)); }
+    if (event.key === "Enter" && matches[selected]) { event.preventDefault(); onNavigate(matches[selected].id); }
+  };
   return (
     <div className="palette-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
       <section className="palette" role="dialog" aria-modal="true" aria-labelledby="palette-title">
-        <div className="palette-search"><span aria-hidden="true">⌕</span><h2 id="palette-title" className="sr-only">遊びを検索</h2><input ref={inputRef} aria-labelledby="palette-title" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="何して暇をつぶす？" /><button onClick={onClose} aria-label="検索を閉じる">ESC</button></div>
-        <div className="palette-results">{matches.map((item) => <button key={item.id} onClick={() => onNavigate(item.id)}><span className={`tone-dot tone-${item.tone}`}>{item.icon}</span><div><strong>{item.title}</strong><small>{CATEGORY_LABELS[item.category]} ・ {item.time}分</small></div><i aria-hidden="true">↗</i></button>)}</div>
+        <div className="palette-search"><span aria-hidden="true">⌕</span><h2 id="palette-title" className="sr-only">遊びを検索</h2><input ref={inputRef} aria-labelledby="palette-title" value={query} onChange={(event) => { setQuery(event.target.value); setSelected(0); }} onKeyDown={onKeyDown} placeholder="何して暇をつぶす？" /><button onClick={onClose} aria-label="検索を閉じる">ESC</button></div>
+        <div className="palette-results" aria-live="polite">{matches.length ? matches.map((item, index) => <button key={item.id} className={selected === index ? "is-selected" : ""} onMouseEnter={() => setSelected(index)} onClick={() => onNavigate(item.id)}><span className={`tone-dot tone-${item.tone}`}>{item.icon}</span><div><strong>{item.title}</strong><small>{CATEGORY_LABELS[item.category]} ・ {item.time}分 ・ {item.control === "keyboard" ? "キー操作" : item.control === "mixed" ? "キー / タッチ" : "クリック / タッチ"}</small></div><i aria-hidden="true">↗</i></button>) : <p className="palette-empty">見つかりませんでした。別の言葉を試してみてください。</p>}</div>
       </section>
     </div>
   );
