@@ -65,6 +65,8 @@ test("keeps product metadata, accessibility, and starter cleanup in place", asyn
   assert.match(app, /himanowa-capsules/);
   assert.match(css, /prefers-reduced-motion:\s*reduce/);
   assert.match(css, /@media \(max-width: 720px\)/);
+  assert.match(css, /\.site-shell\s*\{[^}]*color:\s*var\(--ink\)/s);
+  assert.match(css, /\.site-shell\[data-theme="dawn"\]\s*\{[^}]*--violet-text:/s);
   assert.doesNotMatch(page + layout + app, /codex-preview|_sites-preview/);
 
   await assert.rejects(access(new URL("../app/_sites-preview", import.meta.url)));
