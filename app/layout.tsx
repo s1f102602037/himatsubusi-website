@@ -8,7 +8,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const protocol = requestHeaders.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
   const metadataBase = new URL(`${protocol}://${host}`);
   const title = "ヒマノワ｜暇を、遊びに変える。";
-  const description = "1分から遊べるミニゲーム、診断、ひらめきガチャ、気分転換ツールが集まる暇つぶしポータル。";
+  const description = "クリックでも、キーでも。タイピングや方向キーゲームを含む14種類の小さな遊びが1分から楽しめる暇つぶしポータル。";
   const socialImage = new URL("/og.png", metadataBase).toString();
 
   return {
@@ -21,7 +21,7 @@ export async function generateMetadata(): Promise<Metadata> {
       title,
       description,
       siteName: "ヒマノワ",
-      images: [{ url: socialImage, width: 1733, height: 909, alt: "ヒマノワ — 暇を、遊びに変える。" }],
+      images: [{ url: socialImage, width: 1731, height: 909, alt: "ヒマノワ — 暇を、遊びに変える。KEYBOARD LAB" }],
     },
     twitter: { card: "summary_large_image", title, description, images: [socialImage] },
   };
