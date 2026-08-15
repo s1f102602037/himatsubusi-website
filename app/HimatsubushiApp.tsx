@@ -116,20 +116,20 @@ const CONTENT: ContentItem[] = [
     category: "game",
     title: "タイピング彗星",
     shortTitle: "タイピング彗星",
-    description: "ローマ字を打つほど彗星が加速。30秒のことば宇宙旅行。",
+    description: "56の日本語を好きなローマ字で。打つほど加速することば宇宙旅行。",
     time: 1,
     icon: "☄",
     tone: "coral",
     tag: "キーボード新作",
     control: "keyboard",
-    howTo: "表示されたローマ字を左からそのまま入力します。1語を打ち切ると次の言葉へ進み、連続成功でコンボ得点が増えます。",
+    howTo: "日本語に合うローマ字を入力します。shi / si、tsu / tu など複数の打ち方に対応し、1語を打ち切るたびコンボ得点が増えます。",
   },
   {
     id: "arrow-drift",
     category: "game",
     title: "アロー・ドリフト",
     shortTitle: "アロードリフト",
-    description: "流れてくる矢印を方向キーで追う、指先のショートレース。",
+    description: "過去・現在・次の流れを読み、矢印を方向キーで追うショートレース。",
     time: 1,
     icon: "↝",
     tone: "yellow",
@@ -142,13 +142,13 @@ const CONTENT: ContentItem[] = [
     category: "game",
     title: "オービット・ガード",
     shortTitle: "オービットガード",
-    description: "宇宙船をキーで動かし、落ちる流星を読むターン制サバイバル。",
+    description: "次の落下予報を読み、宇宙船をキーで動かすターン制サバイバル。",
     time: 3,
     icon: "▲",
     tone: "mint",
     tag: "キー操作",
     control: "mixed",
-    howTo: "方向キーまたは W A S D で宇宙船を1マス移動。押すたびに流星も1マス落ちます。星を集めつつ36ターン生き残ります。",
+    howTo: "上の赤い落下予報を見て、方向キーまたは W A S D で宇宙船を1マス移動。予告された列には次のターンに流星が現れます。",
   },
   {
     id: "key-chorus",
@@ -342,8 +342,10 @@ export function HimatsubushiApp() {
   );
   const [stats, setStats] = useStoredState<Stats>("himanowa-stats", DEFAULT_STATS, normalizeStats);
   const [toast, setToast] = useState("");
-  const greeting = "今日もおつかれさま";
+  const [keyEcho, setKeyEcho] = useState<{ key: string; id: number } | null>(null);
+  const greeting = stats.plays === 0 ? "はじめての寄り道へ" : stats.streak >= 3 ? `${stats.streak}日目の宇宙です` : "今日もおつかれさま";
   const searchRef = useRef<HTMLInputElement>(null);
+  const echoTimerRef = useRef<number | undefined>(undefined);
 
   const navigate = useCallback((next: View) => {
     setView(next);
@@ -396,10 +398,20 @@ export function HimatsubushiApp() {
         event.preventDefault();
         setHelpOpen(true);
       }
+      if (view === "home" && !isTypingTarget(event.target) && !event.ctrlKey && !event.metaKey && (event.key.length === 1 || event.key.startsWith("Arrow"))) {
+        const label = event.key.startsWith("Arrow") ? ({ ArrowLeft: "←", ArrowUp: "↑", ArrowDown: "↓", ArrowRight: "→" } as Record<string, string>)[event.key] : event.key.toUpperCase();
+        if (label && event.key !== "/" && event.key !== "?") {
+          setKeyEcho({ key: label, id: Date.now() });
+          window.clearTimeout(echoTimerRef.current);
+          echoTimerRef.current = window.setTimeout(() => setKeyEcho(null), 900);
+        }
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [helpOpen, navigate, searchOpen, view]);
+
+  useEffect(() => () => window.clearTimeout(echoTimerRef.current), []);
 
   const complete = useCallback(
     (id: ContentId, sparks = 10) => {
@@ -467,6 +479,7 @@ export function HimatsubushiApp() {
       <div className="ambient ambient-one" aria-hidden="true" />
       <div className="ambient ambient-two" aria-hidden="true" />
       <div className="noise" aria-hidden="true" />
+      {keyEcho && <div key={keyEcho.id} className="key-echo" aria-hidden="true"><kbd>{keyEcho.key}</kbd><i /><i /><i /></div>}
 
       <header className="topbar">
         <button className="brand" onClick={() => navigate("home")} aria-label="ヒマノワ ホームへ">
@@ -674,6 +687,8 @@ function Home({
         </div>
       </section>
 
+      <MoodCompass onNavigate={onNavigate} />
+
       <section className="library page-width" id="library" aria-labelledby="library-title">
         <div className="section-heading">
           <div>
@@ -712,7 +727,7 @@ function Home({
         {items.length ? (
           <div className="content-grid">
             {items.map((item, index) => (
-              <ContentCard key={item.id} item={item} index={index} onOpen={() => onNavigate(item.id)} />
+              <ContentCard key={item.id} item={item} index={index} played={stats.completed[item.id] ?? 0} onOpen={() => onNavigate(item.id)} />
             ))}
           </div>
         ) : (
@@ -734,6 +749,10 @@ function Home({
             <div><strong>{stats.plays}</strong><span>遊んだ回数</span></div>
             <div><strong>{stats.sparks}</strong><span>sparks</span></div>
             <div><strong>{stats.streak}</strong><span>連続プレイ日</span></div>
+          </div>
+          <div className="collection-progress">
+            <div><span>発見した遊び</span><b>{Object.keys(stats.completed).length} / {CONTENT.length}</b></div>
+            <i><b style={{ width: `${Object.keys(stats.completed).length / CONTENT.length * 100}%` }} /></i>
           </div>
           {recent.length > 0 && (
             <div className="recent-list">
@@ -783,6 +802,39 @@ function KeyboardLab({ onNavigate }: { onNavigate: (view: View) => void }) {
             ))}
           </div>
         </div>
+      </div>
+    </section>
+  );
+}
+
+const MOODS: { icon: string; label: string; sub: string; description: string; tone: string; pool: ContentId[] }[] = [
+  { icon: "⚡", label: "すかっとしたい", sub: "FAST", description: "反射とスピードで頭を切り替える", tone: "coral", pool: ["reaction", "arrow-drift", "color-clash"] },
+  { icon: "✦", label: "頭を動かしたい", sub: "THINK", description: "記憶とひらめきへ、少しだけ潜る", tone: "blue", pool: ["star-memory", "key-chorus", "hima-type"] },
+  { icon: "☾", label: "静かに休みたい", sub: "CALM", description: "急がない遊びで呼吸を戻す", tone: "mint", pool: ["breathing", "bubble", "time-capsule"] },
+  { icon: "?", label: "自分でもわからない", sub: "MYSTERY", description: "その曖昧さごと、偶然に預ける", tone: "violet", pool: ["idea-gacha", "brain-weather", "binary", "orbit-guard", "typing-comet"] },
+];
+
+function MoodCompass({ onNavigate }: { onNavigate: (view: View) => void }) {
+  const [active, setActive] = useState(0);
+  const mood = MOODS[active];
+  const launch = (index: number) => {
+    const selected = MOODS[index];
+    onNavigate(selected.pool[randomIndex(selected.pool.length)]);
+  };
+  return (
+    <section className="mood-compass page-width" aria-labelledby="mood-title">
+      <div className="compass-copy">
+        <p className="eyebrow">FOLLOW YOUR CURRENT</p>
+        <h2 id="mood-title">今の気分は、<br />どっち向き？</h2>
+        <div className={`compass-orb compass-${mood.tone}`} style={{ "--compass-turn": `${active * 72 - 35}deg` } as React.CSSProperties} aria-hidden="true"><i /><span>{mood.icon}</span><b>↗</b></div>
+        <p><b>{mood.label}</b><span>{mood.description}</span></p>
+      </div>
+      <div className="mood-options">
+        {MOODS.map((option, index) => (
+          <button key={option.label} className={active === index ? "is-active" : ""} onPointerEnter={() => setActive(index)} onFocus={() => setActive(index)} onClick={() => launch(index)}>
+            <span aria-hidden="true">{option.icon}</span><div><small>{option.sub}</small><b>{option.label}</b><p>{option.description}</p></div><i aria-hidden="true">→</i>
+          </button>
+        ))}
       </div>
     </section>
   );
@@ -856,21 +908,54 @@ function HelpCenter({ stats, onClose, onNavigate }: { stats: Stats; onClose: () 
   );
 }
 
-function ContentCard({ item, index, onOpen }: { item: ContentItem; index: number; onOpen: () => void }) {
+function CardPreview({ item }: { item: ContentItem }) {
+  if (item.id === "typing-comet") return <div className="card-preview preview-typing" aria-hidden="true"><small>ひま</small><div><i>h</i><i>i</i><i>m</i><i>a</i></div><span>☄</span></div>;
+  if (item.id === "arrow-drift") return <div className="card-preview preview-arrows" aria-hidden="true"><i>←</i><i>↑</i><i>→</i><i>↓</i><b>WASD</b></div>;
+  if (item.id === "orbit-guard") return <div className="card-preview preview-guard" aria-hidden="true"><div className="preview-warning"><i /><i /><i /></div><div className="preview-board">{Array.from({ length: 16 }, (_, index) => <i key={index}>{index === 13 ? "▲" : index === 2 || index === 7 ? "●" : index === 8 ? "✦" : "·"}</i>)}</div></div>;
+  if (item.id === "key-chorus") return <div className="card-preview preview-chorus" aria-hidden="true">{["A", "S", "D", "F"].map((key) => <i key={key}>{key}</i>)}<span>♪</span></div>;
+  if (item.id === "reaction") return <div className="card-preview preview-reaction" aria-hidden="true"><i /><i /><b>SPACE!</b></div>;
+  if (item.id === "color-clash") return <div className="card-preview preview-colors" aria-hidden="true"><b>あか</b><div><i /><i /><i /><i /></div><small>色を答える</small></div>;
+  if (item.id === "star-memory") return <div className="card-preview preview-stars" aria-hidden="true">{Array.from({ length: 12 }, (_, index) => <i key={index}>{[1, 5, 8, 10].includes(index) ? "✦" : "·"}</i>)}</div>;
+  if (item.category === "diagnosis") return <div className="card-preview preview-quiz" aria-hidden="true"><span>Q.</span><i /><i /><i /><b>{item.id === "brain-weather" ? "☁" : "✺"}</b></div>;
+  if (item.id === "idea-gacha") return <div className="card-preview preview-gacha" aria-hidden="true"><i /><i /><i /><i /><b>↻</b></div>;
+  if (item.id === "bubble") return <div className="card-preview preview-bubbles" aria-hidden="true">{Array.from({ length: 9 }, (_, index) => <i key={index} />)}</div>;
+  if (item.id === "breathing") return <div className="card-preview preview-breathe" aria-hidden="true"><i /><span>吸う</span></div>;
+  if (item.id === "binary") return <div className="card-preview preview-binary" aria-hidden="true"><i>A</i><b>VS</b><i>B</i></div>;
+  return <div className="card-preview preview-capsule" aria-hidden="true"><i>今日の一行を、未来へ</i><span>│</span><b>◷</b></div>;
+}
+
+function ContentCard({ item, index, played, onOpen }: { item: ContentItem; index: number; played: number; onOpen: () => void }) {
+  const cardRef = useRef<HTMLElement>(null);
+  const tilt = (event: React.PointerEvent<HTMLElement>) => {
+    if (event.pointerType === "touch") return;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const x = (event.clientX - bounds.left) / bounds.width - .5;
+    const y = (event.clientY - bounds.top) / bounds.height - .5;
+    event.currentTarget.style.setProperty("--tilt-x", `${x * 5}deg`);
+    event.currentTarget.style.setProperty("--tilt-y", `${y * -5}deg`);
+    event.currentTarget.style.setProperty("--glow-x", `${(x + .5) * 100}%`);
+    event.currentTarget.style.setProperty("--glow-y", `${(y + .5) * 100}%`);
+  };
+  const resetTilt = () => {
+    cardRef.current?.style.setProperty("--tilt-x", "0deg");
+    cardRef.current?.style.setProperty("--tilt-y", "0deg");
+  };
   return (
-    <article className={`content-card tone-${item.tone} ${index === 0 ? "is-featured" : ""}`}>
+    <article ref={cardRef} className={`content-card tone-${item.tone} ${index === 0 ? "is-featured" : ""} ${played ? "has-played" : ""}`} onPointerMove={tilt} onPointerLeave={resetTilt}>
       <button className="card-hit-area" onClick={onOpen} aria-label={`${item.title}を開く`} />
       <div className="card-topline">
         <span>{CATEGORY_LABELS[item.category]}</span>
         <span><i aria-hidden="true">◷</i> {item.time}分</span>
       </div>
       <div className="card-icon" aria-hidden="true">{item.icon}</div>
+      <CardPreview item={item} />
       <div className="card-body">
         <div className="card-tags"><span className="card-tag">{item.tag}</span><span className="control-badge">{item.control === "keyboard" ? "⌨ キー" : item.control === "mixed" ? "⌨ / ◎" : "◎ タップ"}</span></div>
         <h3>{item.title}</h3>
         <p>{item.description}</p>
       </div>
       <span className="card-arrow" aria-hidden="true">↗</span>
+      {played > 0 && <span className="played-stamp">PLAYED ×{played}</span>}
     </article>
   );
 }

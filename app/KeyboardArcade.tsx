@@ -343,6 +343,9 @@ export function OrbitGuard({ best, onFinish }: ArcadeProps) {
     setGame((current) => {
       if (current.phase !== "playing") return current;
       const player = { x: Math.max(0, Math.min(BOARD_SIZE - 1, current.player.x + dx)), y: Math.max(0, Math.min(BOARD_SIZE - 1, current.player.y + dy)) };
+      // 盤外へ押したキーはターンとして数えない。端での誤入力が
+      // 流星を進めてしまう理不尽さを防ぎ、操作と結果を一致させる。
+      if (player.x === current.player.x && player.y === current.player.y) return current;
       const descended = current.rocks.filter((rock) => rock.y < BOARD_SIZE - 1).map((rock) => ({ ...rock, y: rock.y + 1 }));
       const rocks = [...descended, ...current.incoming.map((x) => ({ x, y: 0 }))];
       const hit = rocks.some((rock) => rock.x === player.x && rock.y === player.y);

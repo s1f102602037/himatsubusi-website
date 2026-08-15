@@ -45,18 +45,21 @@ test("server-renders the complete Himanowa home", async () => {
   assert.match(html, /キー・コーラス/);
   assert.match(html, /今日の寄り道ミッション/);
   assert.match(html, /暇の称号/);
+  assert.match(html, /今の気分は/);
+  assert.match(html, /どっち向き？/);
   assert.match(html, /og:image/);
   assert.match(html, /\/og\.png/);
   assert.doesNotMatch(html, /codex-preview|Your site is taking shape|react-loading-skeleton/);
 });
 
 test("keeps product metadata, accessibility, and starter cleanup in place", async () => {
-  const [page, layout, app, keyboardArcade, css, packageJson] = await Promise.all([
+  const [page, layout, app, keyboardArcade, css, polishCss, packageJson] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/HimatsubushiApp.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/KeyboardArcade.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+    readFile(new URL("../app/arcade-polish.css", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
   ]);
 
@@ -78,6 +81,11 @@ test("keeps product metadata, accessibility, and starter cleanup in place", asyn
   assert.match(keyboardArcade, /ArrowDrift/);
   assert.match(keyboardArcade, /OrbitGuard/);
   assert.match(keyboardArcade, /KeyChorus/);
+  assert.match(keyboardArcade, /shi.*si/);
+  assert.match(keyboardArcade, /tsu.*tu/);
+  assert.match(keyboardArcade, /guard-forecast/);
+  assert.match(polishCss, /card-preview/);
+  assert.match(polishCss, /prefers-reduced-motion/);
   assert.match(css, /prefers-reduced-motion:\s*reduce/);
   assert.match(css, /@media \(max-width: 720px\)/);
   assert.match(css, /\.site-shell\s*\{[^}]*color:\s*var\(--ink\)/s);
