@@ -10,19 +10,64 @@ type ArcadeProps = {
 };
 
 const TYPE_WORDS = [
-  { word: "hima", label: "ひま" },
-  { word: "hoshi", label: "星" },
-  { word: "yorimichi", label: "寄り道" },
-  { word: "wakuwaku", label: "わくわく" },
-  { word: "uchu", label: "宇宙" },
-  { word: "hirameki", label: "ひらめき" },
-  { word: "oyatsu", label: "おやつ" },
-  { word: "nagareboshi", label: "流れ星" },
-  { word: "fuwafuwa", label: "ふわふわ" },
-  { word: "michikusa", label: "道草" },
-  { word: "tanoshii", label: "たのしい" },
-  { word: "niji", label: "虹" },
-];
+  ["ひま", "ひま"], ["星", "ほし"], ["寄り道", "よりみち"], ["わくわく", "わくわく"], ["宇宙", "うちゅう"],
+  ["ひらめき", "ひらめき"], ["おやつ", "おやつ"], ["流れ星", "ながれぼし"], ["ふわふわ", "ふわふわ"], ["道草", "みちくさ"],
+  ["たのしい", "たのしい"], ["虹", "にじ"], ["深呼吸", "しんこきゅう"], ["秘密基地", "ひみつきち"], ["シャボン玉", "しゃぼんだま"],
+  ["月明かり", "つきあかり"], ["風鈴", "ふうりん"], ["旅支度", "たびじたく"], ["夕焼け", "ゆうやけ"], ["朝焼け", "あさやけ"],
+  ["そよ風", "そよかぜ"], ["窓際", "まどぎわ"], ["落書き", "らくがき"], ["遠回り", "とおまわり"], ["放課後", "ほうかご"],
+  ["恐竜", "きょうりゅう"], ["小さな発見", "ちいさなはっけん"], ["彗星", "すいせい"], ["銀河", "ぎんが"], ["うたた寝", "うたたね"],
+  ["かくれんぼ", "かくれんぼ"], ["しおり", "しおり"], ["金曜日", "きんようび"], ["麦茶", "むぎちゃ"], ["紙飛行機", "かみひこうき"],
+  ["鉛筆", "えんぴつ"], ["宝物", "たからもの"], ["水たまり", "みずたまり"], ["世界", "せかい"], ["魔法", "まほう"],
+  ["しずく", "しずく"], ["雲の上", "くものうえ"], ["洗濯物", "せんたくもの"], ["思い出", "おもいで"], ["気まぐれ", "きまぐれ"],
+  ["星空", "ほしぞら"], ["夏休み", "なつやすみ"], ["遠足", "えんそく"], ["信号", "しんごう"], ["木漏れ日", "こもれび"],
+  ["坂道", "さかみち"], ["砂時計", "すなどけい"], ["空想", "くうそう"], ["探検", "たんけん"], ["不思議", "ふしぎ"],
+  ["一休み", "ひとやすみ"],
+] as const;
+
+const ROMAJI: Record<string, string[]> = {
+  あ: ["a"], い: ["i"], う: ["u"], え: ["e"], お: ["o"],
+  か: ["ka"], き: ["ki"], く: ["ku"], け: ["ke"], こ: ["ko"],
+  さ: ["sa"], し: ["shi", "si"], す: ["su"], せ: ["se"], そ: ["so"],
+  た: ["ta"], ち: ["chi", "ti"], つ: ["tsu", "tu"], て: ["te"], と: ["to"],
+  な: ["na"], に: ["ni"], ぬ: ["nu"], ね: ["ne"], の: ["no"],
+  は: ["ha"], ひ: ["hi"], ふ: ["fu", "hu"], へ: ["he"], ほ: ["ho"],
+  ま: ["ma"], み: ["mi"], む: ["mu"], め: ["me"], も: ["mo"],
+  や: ["ya"], ゆ: ["yu"], よ: ["yo"],
+  ら: ["ra"], り: ["ri"], る: ["ru"], れ: ["re"], ろ: ["ro"],
+  わ: ["wa"], を: ["wo", "o"], ん: ["n", "nn"],
+  が: ["ga"], ぎ: ["gi"], ぐ: ["gu"], げ: ["ge"], ご: ["go"],
+  ざ: ["za"], じ: ["ji", "zi"], ず: ["zu"], ぜ: ["ze"], ぞ: ["zo"],
+  だ: ["da"], ぢ: ["ji", "di"], づ: ["zu", "du"], で: ["de"], ど: ["do"],
+  ば: ["ba"], び: ["bi"], ぶ: ["bu"], べ: ["be"], ぼ: ["bo"],
+  ぱ: ["pa"], ぴ: ["pi"], ぷ: ["pu"], ぺ: ["pe"], ぽ: ["po"],
+  きゃ: ["kya"], きゅ: ["kyu"], きょ: ["kyo"], しゃ: ["sha", "sya"], しゅ: ["shu", "syu"], しょ: ["sho", "syo"],
+  ちゃ: ["cha", "tya"], ちゅ: ["chu", "tyu"], ちょ: ["cho", "tyo"], にゃ: ["nya"], にゅ: ["nyu"], にょ: ["nyo"],
+  ひゃ: ["hya"], ひゅ: ["hyu"], ひょ: ["hyo"], みゃ: ["mya"], みゅ: ["myu"], みょ: ["myo"],
+  りゃ: ["rya"], りゅ: ["ryu"], りょ: ["ryo"], ぎゃ: ["gya"], ぎゅ: ["gyu"], ぎょ: ["gyo"],
+  じゃ: ["ja", "zya"], じゅ: ["ju", "zyu"], じょ: ["jo", "zyo"], びゃ: ["bya"], びゅ: ["byu"], びょ: ["byo"],
+  ぴゃ: ["pya"], ぴゅ: ["pyu"], ぴょ: ["pyo"],
+};
+
+function splitKana(reading: string) {
+  const tokens: string[] = [];
+  for (let index = 0; index < reading.length; index += 1) {
+    const pair = reading.slice(index, index + 2);
+    if (ROMAJI[pair]) { tokens.push(pair); index += 1; }
+    else tokens.push(reading[index]);
+  }
+  return tokens;
+}
+
+function buildRomajiVariants(reading: string) {
+  const tokens = splitKana(reading);
+  return tokens.reduce<string[]>((variants, token, index) => {
+    const nextOptions = ROMAJI[tokens[index + 1]] ?? [];
+    const options = token === "っ"
+      ? [...new Set(nextOptions.map((option) => option.match(/^[bcdfghjklmnpqrstvwxyz]/)?.[0] ?? ""))].filter(Boolean)
+      : ROMAJI[token] ?? [token];
+    return variants.flatMap((variant) => options.map((option) => `${variant}${option}`)).slice(0, 128);
+  }, [""]);
+}
 
 function Key({ children, active = false }: { children: React.ReactNode; active?: boolean }) {
   return <kbd className={`arcade-key ${active ? "is-active" : ""}`}>{children}</kbd>;
@@ -63,11 +108,16 @@ export function TypingComet({ best, onFinish }: ArcadeProps) {
   const [typed, setTyped] = useState("");
   const [score, setScore] = useState(0);
   const [combo, setCombo] = useState(0);
+  const [bestCombo, setBestCombo] = useState(0);
+  const [completedWords, setCompletedWords] = useState(0);
+  const [correctKeys, setCorrectKeys] = useState(0);
   const [errors, setErrors] = useState(0);
   const [shake, setShake] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const recordedRef = useRef(false);
   const currentWord = TYPE_WORDS[wordIndex];
+  const variants = useMemo(() => buildRomajiVariants(currentWord[1]), [currentWord]);
+  const activeVariant = variants.find((variant) => variant.startsWith(typed)) ?? variants[0];
 
   const start = () => {
     setPhase("playing");
@@ -76,6 +126,9 @@ export function TypingComet({ best, onFinish }: ArcadeProps) {
     setTyped("");
     setScore(0);
     setCombo(0);
+    setBestCombo(0);
+    setCompletedWords(0);
+    setCorrectKeys(0);
     setErrors(0);
     recordedRef.current = false;
     window.setTimeout(() => inputRef.current?.focus(), 0);
@@ -96,17 +149,20 @@ export function TypingComet({ best, onFinish }: ArcadeProps) {
 
   const type = (value: string) => {
     const normalized = value.toLowerCase().replace(/[^a-z]/g, "");
-    if (!currentWord.word.startsWith(normalized)) {
+    if (!variants.some((variant) => variant.startsWith(normalized))) {
       setErrors((count) => count + 1);
       setCombo(0);
       setShake(true);
       window.setTimeout(() => setShake(false), 180);
       return;
     }
-    if (normalized === currentWord.word) {
+    if (variants.includes(normalized)) {
       const nextCombo = combo + 1;
-      setScore((points) => points + currentWord.word.length * 10 + Math.min(nextCombo, 10) * 3);
+      setScore((points) => points + normalized.length * 10 + Math.min(nextCombo, 10) * 3);
       setCombo(nextCombo);
+      setBestCombo((value) => Math.max(value, nextCombo));
+      setCompletedWords((value) => value + 1);
+      setCorrectKeys((value) => value + normalized.length);
       setTyped("");
       setWordIndex((index) => (index + 1 + Math.floor(Math.random() * (TYPE_WORDS.length - 1))) % TYPE_WORDS.length);
       return;
@@ -114,8 +170,8 @@ export function TypingComet({ best, onFinish }: ArcadeProps) {
     setTyped(normalized);
   };
 
-  const letters = currentWord.word.split("");
-  const accuracy = Math.max(0, Math.round((score / 10) / Math.max(1, score / 10 + errors) * 100));
+  const letters = activeVariant.split("");
+  const accuracy = Math.max(0, Math.round(correctKeys / Math.max(1, correctKeys + errors) * 100));
 
   return (
     <div className="game-wrap typing-game">
@@ -125,21 +181,21 @@ export function TypingComet({ best, onFinish }: ArcadeProps) {
       ) : phase === "result" ? (
         <div className="arcade-result">
           <span aria-hidden="true">☄</span><p className="eyebrow">FLIGHT REPORT</p><h2>{score} points</h2>
-          <div className="result-metrics"><div><strong>{combo}</strong><span>LAST COMBO</span></div><div><strong>{accuracy}%</strong><span>ACCURACY</span></div></div>
+          <div className="result-metrics"><div><strong>{completedWords}</strong><span>WORDS</span></div><div><strong>{bestCombo}</strong><span>BEST COMBO</span></div><div><strong>{accuracy}%</strong><span>ACCURACY</span></div></div>
           <p>{score >= 900 ? "指先が銀河を一周しました。" : score >= 450 ? "きれいな軌道！次はもっと遠くへ。" : "最初の一文字から、もう立派な宇宙旅行。"}</p>
           <button className="primary-button" onClick={start}>もう一度飛ばす</button>
         </div>
       ) : (
         <div className={`typing-console ${shake ? "is-shaking" : ""}`}>
           <div className="typing-combo">{combo >= 2 ? `${combo} COMBO ✦` : "TYPE THE SIGNAL"}</div>
-          <div className="typing-meaning">{currentWord.label}</div>
+          <div className="typing-meaning"><strong>{currentWord[0]}</strong><small>{currentWord[1]}</small></div>
           <div className="typing-word" aria-live="polite">
             {letters.map((letter, index) => <span key={`${letter}-${index}`} className={index < typed.length ? "is-typed" : index === typed.length ? "is-current" : ""}>{letter}</span>)}
           </div>
           <label className="typing-input-label">
             <span className="sr-only">表示されたローマ字を入力</span>
-            <input ref={inputRef} value={typed} onChange={(event) => type(event.target.value)} autoCapitalize="none" autoCorrect="off" spellCheck={false} inputMode="text" aria-label={`${currentWord.word} と入力`} />
-            <span aria-hidden="true">ここに入力すると彗星が加速します</span>
+            <input ref={inputRef} value={typed} onChange={(event) => type(event.target.value)} autoCapitalize="none" autoCorrect="off" spellCheck={false} inputMode="text" aria-label={`${activeVariant} と入力`} />
+            <span aria-hidden="true">{variants.length > 1 ? `${variants.slice(0, 3).join(" / ")} どの打ち方でもOK` : "ここに入力すると彗星が加速します"}</span>
           </label>
         </div>
       )}
@@ -216,7 +272,8 @@ export function ArrowDrift({ best, onFinish }: ArcadeProps) {
 
   useEffect(() => { if (phase === "playing" && time === 0) finish(score); }, [finish, phase, score, time]);
 
-  const upcoming = sequence.slice(position, position + 7);
+  const runway = Array.from({ length: 9 }, (_, offset) => position - 2 + offset).filter((index) => index >= 0 && index < sequence.length);
+  const rank = combo >= 18 ? "HYPER FLOW" : combo >= 10 ? "FULL SPEED" : combo >= 4 ? "NICE CURRENT" : "FIND THE RHYTHM";
 
   return (
     <div className="game-wrap arrow-game">
@@ -228,9 +285,13 @@ export function ArrowDrift({ best, onFinish }: ArcadeProps) {
       ) : (
         <>
           <div className={`arrow-runway feedback-${feedback}`} aria-live="polite">
-            {upcoming.map((arrow, index) => <span key={`${position}-${index}`} className={index === 0 ? "is-now" : ""}>{ARROWS[arrow].glyph}</span>)}
+            {runway.map((signalIndex) => {
+              const distance = signalIndex - position;
+              const state = distance < 0 ? "is-past" : distance === 0 ? "is-now" : distance === 1 ? "is-next" : "is-future";
+              return <span key={signalIndex} className={state} data-distance={Math.abs(distance)}><small>{distance === 0 ? "NOW" : distance === 1 ? "NEXT" : distance < 0 ? "HIT" : `+${distance}`}</small><b>{ARROWS[sequence[signalIndex]].glyph}</b></span>;
+            })}
           </div>
-          <p className="arrow-counter">SIGNAL {position + 1} / {sequence.length}</p>
+          <div className="arrow-flow"><span>{rank}</span><i><b style={{ width: `${position / sequence.length * 100}%` }} /></i><em>SIGNAL {position + 1} / {sequence.length}</em></div>
           <div className="arrow-controls" aria-label="画面上の方向キー">
             {ARROWS.map((arrow, index) => <button key={arrow.key} onClick={() => hit(index)} aria-label={`${arrow.name}を入力`}><Key active={sequence[position] === index}>{arrow.glyph}</Key><small>{arrow.alt.toUpperCase()}</small></button>)}
           </div>
@@ -241,8 +302,12 @@ export function ArrowDrift({ best, onFinish }: ArcadeProps) {
 }
 
 type Point = { x: number; y: number };
-type GuardState = { phase: "idle" | "playing" | "result"; player: Point; rocks: Point[]; star: Point; turn: number; score: number; reason: string };
+type GuardState = { phase: "idle" | "playing" | "result"; player: Point; rocks: Point[]; incoming: number[]; star: Point; turn: number; score: number; reason: string };
 const BOARD_SIZE = 6;
+
+function randomIncoming(count: number) {
+  return Array.from({ length: BOARD_SIZE }, (_, index) => index).sort(() => Math.random() - .5).slice(0, count);
+}
 
 function randomStar(rocks: Point[], player: Point): Point {
   let point = { x: Math.floor(Math.random() * BOARD_SIZE), y: 1 + Math.floor(Math.random() * (BOARD_SIZE - 2)) };
@@ -255,7 +320,7 @@ function randomStar(rocks: Point[], player: Point): Point {
 function initialGuardState(): GuardState {
   const player = { x: 2, y: 5 };
   const rocks = [{ x: 0, y: 0 }, { x: 3, y: 1 }, { x: 5, y: 0 }];
-  return { phase: "idle", player, rocks, star: randomStar(rocks, player), turn: 0, score: 0, reason: "" };
+  return { phase: "idle", player, rocks, incoming: [1, 4], star: randomStar(rocks, player), turn: 0, score: 0, reason: "" };
 }
 
 export function OrbitGuard({ best, onFinish }: ArcadeProps) {
@@ -278,16 +343,19 @@ export function OrbitGuard({ best, onFinish }: ArcadeProps) {
     setGame((current) => {
       if (current.phase !== "playing") return current;
       const player = { x: Math.max(0, Math.min(BOARD_SIZE - 1, current.player.x + dx)), y: Math.max(0, Math.min(BOARD_SIZE - 1, current.player.y + dy)) };
-      const rocks = current.rocks.map((rock, index) => rock.y >= BOARD_SIZE - 1 ? { x: (Math.floor(Math.random() * BOARD_SIZE) + index) % BOARD_SIZE, y: 0 } : { ...rock, y: rock.y + 1 });
+      const descended = current.rocks.filter((rock) => rock.y < BOARD_SIZE - 1).map((rock) => ({ ...rock, y: rock.y + 1 }));
+      const rocks = [...descended, ...current.incoming.map((x) => ({ x, y: 0 }))];
       const hit = rocks.some((rock) => rock.x === player.x && rock.y === player.y);
       const collected = current.star.x === player.x && current.star.y === player.y;
       const turn = current.turn + 1;
       const score = current.score + (collected ? 50 : 4);
       const cleared = turn >= 36;
+      const incomingCount = turn >= 24 ? 3 : turn >= 10 ? 2 : 1;
       return {
         phase: hit || cleared ? "result" : "playing",
         player,
         rocks,
+        incoming: randomIncoming(incomingCount),
         star: collected ? randomStar(rocks, player) : current.star,
         turn,
         score,
@@ -318,16 +386,22 @@ export function OrbitGuard({ best, onFinish }: ArcadeProps) {
         <div className="arcade-result"><span aria-hidden="true">{game.turn >= 36 ? "✦" : "☄"}</span><p className="eyebrow">MISSION REPORT</p><h2>{game.score} sparks</h2><p>{game.reason}</p><button className="primary-button" onClick={start}>もう一度守る</button></div>
       ) : (
         <div className="guard-layout">
-          <div className="guard-board" role="img" aria-label={`宇宙船は横${game.player.x + 1}、縦${game.player.y + 1}。星は横${game.star.x + 1}、縦${game.star.y + 1}`}>
-            {cells.map((cell) => {
-              const player = cell.x === game.player.x && cell.y === game.player.y;
-              const rock = game.rocks.some((item) => item.x === cell.x && item.y === cell.y);
-              const star = cell.x === game.star.x && cell.y === game.star.y;
-              return <span key={`${cell.x}-${cell.y}`} className={player ? "is-ship" : rock ? "is-rock" : star ? "is-star" : ""} aria-hidden="true">{player ? "▲" : rock ? "●" : star ? "✦" : "·"}</span>;
-            })}
+          <div className="guard-board-wrap">
+            <div className="guard-forecast" aria-label={`次は${game.incoming.map((lane) => `${lane + 1}列目`).join("と")}に流星が落ちます`}>
+              <b>次の落下</b>{Array.from({ length: BOARD_SIZE }, (_, lane) => <span key={lane} className={game.incoming.includes(lane) ? "is-warning" : ""}>{game.incoming.includes(lane) ? "▼" : "·"}</span>)}
+            </div>
+            <div className="guard-board" role="img" aria-label={`宇宙船は横${game.player.x + 1}、縦${game.player.y + 1}。星は横${game.star.x + 1}、縦${game.star.y + 1}`}>
+              {cells.map((cell) => {
+                const player = cell.x === game.player.x && cell.y === game.player.y;
+                const rock = game.rocks.some((item) => item.x === cell.x && item.y === cell.y);
+                const star = cell.x === game.star.x && cell.y === game.star.y;
+                const warning = cell.y === 0 && game.incoming.includes(cell.x);
+                return <span key={`${cell.x}-${cell.y}`} className={`${player ? "is-ship" : rock ? "is-rock" : star ? "is-star" : ""} ${warning ? "is-threatened" : ""}`} aria-hidden="true">{player ? "▲" : rock ? "●" : star ? "✦" : warning ? "↓" : "·"}</span>;
+              })}
+            </div>
           </div>
           <div className="guard-side">
-            <p><b>▲</b> あなた</p><p><b>✦</b> 集める</p><p><b>●</b> よける</p>
+            <p><b>▲</b> あなた</p><p><b>✦</b> 集める</p><p><b>●</b> よける</p><p className="forecast-legend"><b>▼</b> 次に落下</p>
             <div className="mini-dpad">
               <button onClick={() => move(0, -1)} aria-label="上へ"><Key>↑</Key></button><button onClick={() => move(-1, 0)} aria-label="左へ"><Key>←</Key></button><button onClick={() => move(0, 1)} aria-label="下へ"><Key>↓</Key></button><button onClick={() => move(1, 0)} aria-label="右へ"><Key>→</Key></button>
             </div>
